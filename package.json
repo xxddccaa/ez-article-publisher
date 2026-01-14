@@ -1,0 +1,22 @@
+{
+  "name": "ez-article-publisher",
+  "version": "1.0.0",
+  "description": "使用playwright实现文章发布助手，发布到掘金，CSDN等",
+  "main": "index.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/luckylark2000/ez-article-publisher.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/luckylark2000/ez-article-publisher/issues"
+  },
+  "homepage": "https://github.com/luckylark2000/ez-article-publisher#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@types/node": "^25.0.8"
+  }
+}
