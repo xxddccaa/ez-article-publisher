@@ -2,8 +2,17 @@
   "name": "ez-article-publisher",
   "version": "1.0.0",
   "description": "使用playwright实现文章发布助手，发布到掘金，CSDN等",
-  "main": "index.js",
-  "scripts": {},
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/luckylark2000/ez-article-publisher.git"
@@ -17,6 +26,7 @@
   "homepage": "https://github.com/luckylark2000/ez-article-publisher#readme",
   "devDependencies": {
     "@playwright/test": "^1.57.0",
-    "@types/node": "^25.0.8"
+    "@types/node": "^25.0.8",
+    "turbo": "latest"
   }
 }
