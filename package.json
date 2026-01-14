@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "使用playwright实现文章发布助手，发布到掘金，CSDN等",
   "private": true,
+  "packageManager": "npm@10.9.3",
   "workspaces": [
     "apps/*",
     "packages/*"
