@@ -1,0 +1,5 @@
+{
+  "MD024": false, // no duplicate header
+  "MD060": false, // table-column-style
+  "MD013": false
+}
