@@ -1,8 +1,7 @@
 {
   "version": "0.2",
   "language": "en",
-  "words": [
-    "nums",
-  ],
+  "words": ["nums"],
   "flagWords": [],
+  "ignorePaths": ["custom-words.txt"]
 }
