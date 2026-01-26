@@ -1,35 +1,22 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": [
-    "**/.env",
-    "**/.env.local"
-  ],
-  "globalEnv": [
-    "NODE_ENV"
-  ],
-  "pipeline": {
+  "globalDependencies": ["**/.env", "**/.env.local"],
+  "globalEnv": ["NODE_ENV"],
+  "tasks": {
     "dev": {
       "cache": false,
       "persistent": true
     },
     "build": {
-      "outputs": [
-        ".next/**",
-        ".nuxt/**",
-        "dist/**"
-      ],
-      "dependsOn": [
-        "^build"
-      ]
+      "outputs": [".next/**", ".nuxt/**", "dist/**"],
+      "dependsOn": ["^build"]
     },
     "lint": {
       "outputs": [],
       "cache": false
     },
     "test": {
-      "outputs": [
-        "coverage/**"
-      ],
+      "outputs": ["coverage/**"],
       "cache": false
     }
   }
