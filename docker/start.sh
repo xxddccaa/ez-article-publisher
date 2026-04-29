@@ -18,7 +18,12 @@ x11vnc -display "${DISPLAY}" -forever -shared -rfbport 5900 -nopw -xkb >/tmp/x11
 echo "[startup] starting noVNC on :6080"
 websockify --web=/usr/share/novnc/ 6080 localhost:5900 >/tmp/novnc.log 2>&1 &
 
-sleep 2
+for _ in $(seq 1 20); do
+  if [ -S "/tmp/.X11-unix/X${DISPLAY#:}" ]; then
+    break
+  fi
+  sleep 0.5
+done
 
 echo "[startup] starting Nest API on :${PORT}"
 exec node apps/backend/dist/main.js

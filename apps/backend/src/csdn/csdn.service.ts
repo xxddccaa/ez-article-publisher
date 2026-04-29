@@ -236,8 +236,14 @@ export class CsdnService implements OnModuleInit, OnModuleDestroy {
 
         await this.confirmPublish(page);
 
-        const screenshotPath = await this.takeScreenshot(page, 'publish-success');
         const articleUrl = await this.waitForArticleUrl(page);
+        const publishBlocker = await this.detectPublishBlocker(page);
+
+        if (publishBlocker) {
+          throw new Error(publishBlocker);
+        }
+
+        const screenshotPath = await this.takeScreenshot(page, 'publish-success');
 
         this.lastError = null;
 
@@ -371,7 +377,7 @@ export class CsdnService implements OnModuleInit, OnModuleDestroy {
     await locator.click({ force: true });
     await page.keyboard.press(this.selectAllShortcut());
     await page.keyboard.press('Backspace').catch(() => undefined);
-    await page.keyboard.insertText(markdown);
+    await this.insertMarkdownContent(page, markdown);
     await page.waitForTimeout(800);
   }
 
@@ -390,8 +396,29 @@ export class CsdnService implements OnModuleInit, OnModuleDestroy {
     await page.keyboard.press(this.selectAllShortcut()).catch(() => undefined);
     await page.keyboard.press('Backspace').catch(() => undefined);
     await page.keyboard.press('Delete').catch(() => undefined);
-    await page.keyboard.insertText(markdown);
+    await this.insertMarkdownContent(page, markdown);
     await page.waitForTimeout(1000);
+  }
+
+  private async insertMarkdownContent(
+    page: Page,
+    markdown: string,
+  ): Promise<void> {
+    const lines = markdown.replace(/\r\n/g, '\n').split('\n');
+
+    for (const [index, line] of lines.entries()) {
+      if (index > 0) {
+        await page.keyboard.press('Enter');
+      }
+
+      if (line) {
+        await page.keyboard.insertText(line);
+      }
+
+      if (index > 0 && index % 40 === 0) {
+        await page.waitForTimeout(30);
+      }
+    }
   }
 
   private async fillRichTextFrame(frame: Frame, markdown: string): Promise<void> {
@@ -672,6 +699,26 @@ export class CsdnService implements OnModuleInit, OnModuleDestroy {
       if (href) {
         return href;
       }
+    }
+
+    return null;
+  }
+
+  private async detectPublishBlocker(page: Page): Promise<string | null> {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const quotaPrompt = page
+        .getByText('当前已发文上限，可开通会员提升额度', { exact: true })
+        .first();
+      if (await quotaPrompt.isVisible().catch(() => false)) {
+        return 'CSDN publish blocked: 当前已发文上限，可开通会员提升额度';
+      }
+
+      const genericQuotaPrompt = page.getByText('当前已发文上限').first();
+      if (await genericQuotaPrompt.isVisible().catch(() => false)) {
+        return 'CSDN publish blocked: 当前已发文上限';
+      }
+
+      await page.waitForTimeout(500);
     }
 
     return null;
