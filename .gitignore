@@ -164,3 +164,9 @@ Thumbs.db
 # Screenshots
 apps/backend/screenshots/*
 !apps/backend/screenshots/.gitkeep
+
+# Local runtime artifacts for the Dockerized CSDN publisher
+data/
+screenshots/
+.run/
+apps/frontend/.output/

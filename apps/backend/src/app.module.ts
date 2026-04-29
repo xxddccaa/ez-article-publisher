@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
-import { TestGateway } from './test/test.gateway';
-import { TestService } from './test/test.service';
+import { CsdnController } from './csdn/csdn.controller';
+import { CsdnService } from './csdn/csdn.service';
 
 @Module({
-  providers: [TestGateway, TestService],
+  controllers: [CsdnController],
+  providers: [CsdnService],
 })
 export class AppModule {}

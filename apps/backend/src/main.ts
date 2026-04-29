@@ -1,8 +1,12 @@
 import { NestFactory } from '@nestjs/core';
+import * as express from 'express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const port = Number(process.env.PORT || 3001);
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   // 启用CORS
   app.enableCors({
@@ -12,9 +16,9 @@ async function bootstrap() {
   });
 
   // 配置WebSocket
-  const server = await app.listen(3001);
-  console.log(`Backend server is running on http://localhost:3001`);
-  console.log(`WebSocket available at ws://localhost:3001/socket.io`);
+  await app.listen(port);
+  console.log(`Backend server is running on http://localhost:${port}`);
+  console.log(`WebSocket available at ws://localhost:${port}/socket.io`);
 }
 
 bootstrap();

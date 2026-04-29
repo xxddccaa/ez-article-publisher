@@ -1,0 +1,9 @@
+node_modules
+.git
+.turbo
+apps/frontend/.nuxt
+apps/frontend/.output
+apps/backend/dist
+screenshots
+data
+.run

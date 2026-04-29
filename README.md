@@ -1,185 +1,268 @@
 # EZ Article Publisher
 
-使用 Playwright 实现文章发布助手，发布到掘金、CSDN 等。
+把 CSDN Markdown 发文流程封装成一个本地 HTTP 服务。
 
-## 项目架构
+这个项目当前的落地方向是：
 
-这是一个 Turborepo Monorepo 架构，包含：
+- 用 Docker 启动 Playwright + Chromium + noVNC
+- 你自己手动登录 CSDN，一次登录后持久保存会话
+- 后续通过 REST 接口传入标题、Markdown、标签、专栏、摘要
+- 服务自动打开 CSDN Markdown 编辑器并完成发布
 
-- **frontend**: Nuxt 3 前端应用
-- **backend**: Nest.js 后端 API 服务
-- **packages**: 共享库（未来扩展）
+注意：这不是 CSDN 官方开放 API，而是基于网页自动化的本地服务。只要 CSDN 页面结构改版，选择器就可能需要调整。
 
-## 功能特性
+## 当前能力
 
-- 🚀 Nuxt 3 现代前端框架
-- 🔧 Nest.js 强大的后端框架
-- 🎭 Playwright 自动化浏览器测试
-- 🔌 WebSocket 实时通信
-- 📦 Turborepo 高效 Monorepo 管理
+- 固定使用 CSDN Markdown 编辑器页面
+- 支持持久化登录态
+- 支持 Docker 一键启动
+- 支持 noVNC 远程查看容器里的浏览器
+- 支持 REST 接口触发发布
+- 支持标签、单个分类专栏、摘要、可见性
+- 自动保存成功/失败截图，便于排障
+
+## 整体架构
+
+```text
+.
+├── apps/backend/src/csdn/    # CSDN 自动化服务 + REST 控制器
+├── docker/start.sh           # Xvfb / x11vnc / noVNC / API 启动脚本
+├── Dockerfile
+├── docker-compose.yml
+├── docs/API.md               # 接口文档
+└── data/
+    ├── profile/              # Chromium 持久化登录态
+    └── screenshots/          # 发布成功/失败截图
+```
+
+## 运行要求
+
+- Docker / Docker Compose
+- 本机可访问 CSDN
+- 需要你自己完成一次 CSDN 登录
 
 ## 快速开始
 
-### 前置要求
+在项目根目录执行：
 
-- Node.js >= 18.0.0
-- npm >= 9.0.0
+```bash
+docker compose up --build -d
+```
 
-### 安装依赖
+启动完成后会暴露两个入口：
+
+- API: `http://localhost:3001`
+- noVNC: `http://localhost:6080/vnc.html?autoconnect=1&resize=remote`
+
+可以先确认服务健康状态：
+
+```bash
+curl http://localhost:3001/health
+```
+
+期望返回：
+
+```json
+{"ok":true}
+```
+
+## 第一次登录 CSDN
+
+1. 启动容器
+2. 打开 `http://localhost:6080/vnc.html?autoconnect=1&resize=remote`
+3. 容器里的 Chromium 会自动打开 CSDN Markdown 编辑器
+4. 你在 noVNC 页面里完成登录
+5. 登录状态会保存在 `data/profile/`
+
+登录成功后，可以检查会话状态：
+
+```bash
+curl http://localhost:3001/api/csdn/session
+```
+
+典型返回：
+
+```json
+{
+  "browserOpen": true,
+  "loggedIn": true,
+  "currentUrl": "https://editor.csdn.net/md/?not_checkout=1&spm=1015.2103.3001.8066",
+  "lastError": null
+}
+```
+
+## 发布文章
+
+核心接口：
+
+```bash
+curl -X POST http://localhost:3001/api/csdn/publish \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "title": "树莓派上部署 Python 服务并配置 systemd 开机自启",
+    "markdown": "# 树莓派部署记录\n\n这里是 Markdown 正文。",
+    "tags": ["树莓派", "Python", "systemd"],
+    "category": "树莓派",
+    "summary": "记录一次在树莓派上部署 Python 服务并配置开机自启的流程。",
+    "visibility": "公开"
+  }'
+```
+
+字段说明：
+
+- `title`: 必填，文章标题
+- `markdown`: 必填，Markdown 正文
+- `tags`: 可选，字符串数组；建议传
+- `category`: 可选，单个分类专栏名称
+- `summary`: 可选，文章摘要
+- `visibility`: 可选，可传界面上可见范围的文本，例如 `公开`
+- `closeBrowserAfterPublish`: 可选，发布后关闭浏览器会话
+
+成功返回示例：
+
+```json
+{
+  "ok": true,
+  "articleUrl": "https://blog.csdn.net/xxx/article/details/123456789",
+  "screenshotPath": "/data/screenshots/publish-success-1777449159389.png",
+  "message": "Article published successfully"
+}
+```
+
+失败时服务会返回 500，同时带上失败截图路径，便于直接去 `data/screenshots/` 排查。
+
+## 专栏控制说明
+
+当前接口的 `category` 字段按“单个专栏”设计，符合常见使用方式。
+
+- 传 `category: "树莓派"` 时，会优先精确匹配
+- 如果没有精确匹配，再尝试前缀匹配和包含匹配
+- 会尽量避开名字里含 `仅我可见` 的专栏
+- 现在已经实测能正确选择 `树莓派`
+
+如果你的专栏名比较相近，建议直接传完整专栏名，避免误匹配。
+
+## 会话管理接口
+
+重新打开浏览器会话：
+
+```bash
+curl -X POST http://localhost:3001/api/csdn/session/open
+```
+
+关闭浏览器会话：
+
+```bash
+curl -X POST http://localhost:3001/api/csdn/session/close
+```
+
+查看当前会话：
+
+```bash
+curl http://localhost:3001/api/csdn/session
+```
+
+完整接口说明见 `docs/API.md`
+
+## Docker 相关说明
+
+默认挂载：
+
+- `./data/profile:/data/profile`
+- `./data/screenshots:/data/screenshots`
+
+这意味着：
+
+- 浏览器登录信息会保存在宿主机
+- 容器重启后仍然保留登录态
+- 每次发布成功或失败都会在宿主机留下截图
+
+容器启动脚本会自动做几件事：
+
+- 启动 `Xvfb`
+- 启动 `fluxbox`
+- 启动 `x11vnc`
+- 启动 `noVNC`
+- 清理 Chromium 锁文件
+- 启动 Nest API
+
+## 本地开发
+
+安装依赖：
 
 ```bash
 npm install
 ```
 
-### 开发环境运行
-
-同时启动前端和后端：
+启动后端开发服务：
 
 ```bash
-npm run dev
+PORT=3001 AUTO_OPEN_BROWSER=true npm --workspace=@ez-publisher/backend run dev
 ```
 
-或分别启动：
+如果你不想自动打开浏览器：
 
 ```bash
-# 启动后端 (端口 3001)
-npm --workspace=@ez-publisher/backend run dev
-
-# 在另一个终端启动前端 (端口 3000)
-npm --workspace=@ez-publisher/frontend run dev
+PORT=3001 AUTO_OPEN_BROWSER=false npm --workspace=@ez-publisher/backend run dev
 ```
 
-### 构建生产版本
+## 常见问题
+
+### 1. 打开 noVNC 后浏览器没起来
+
+先检查 API：
 
 ```bash
-npm run build
+curl http://localhost:3001/api/csdn/session
 ```
 
-## 项目结构
-
-```
-.
-├── apps/
-│   ├── frontend/              # Nuxt 3 前端应用
-│   │   ├── app.vue           # 主应用入口
-│   │   ├── nuxt.config.ts    # Nuxt 配置
-│   │   └── package.json
-│   └── backend/               # Nest.js 后端应用
-│       ├── src/
-│       │   ├── main.ts       # 应用入口
-│       │   ├── app.module.ts # 主模块
-│       │   └── test/
-│       │       ├── test.service.ts    # Playwright 测试服务
-│       │       └── test.gateway.ts    # WebSocket 网关
-│       ├── screenshots/      # 测试截图保存目录
-│       ├── tsconfig.json
-│       └── package.json
-├── packages/                  # 共享库（未来扩展）
-├── turbo.json                # Turborepo 配置
-├── package.json              # 根目录配置
-└── .env.example              # 环境变量示例
-```
-
-## 工作流程
-
-1. **用户界面**: 访问 http://localhost:3000
-2. **点击按钮**: 用户点击"打开掘金"按钮
-3. **建立连接**: 前端通过 Socket.IO 连接后端
-4. **执行测试**: 后端使用 Playwright 启动浏览器
-5. **实时反馈**: 通过 WebSocket 实时发送日志和截图
-6. **显示结果**: 前端展示测试结果
-
-## Playwright 测试流程
-
-当前测试用例 (`test/example.spec.ts`):
-
-```javascript
-test('add', async ({ page }) => {
-  await page.goto('https://juejin.cn/');
-  await expect(page).toHaveTitle(/稀土掘金/);
-});
-```
-
-对应的自动化流程：
-
-1. 启动无头浏览器（非无头模式，可见）
-2. 导航到掘金官网
-3. 验证页面标题
-4. 保存页面截图
-5. 关闭浏览器
-
-## 实时通信协议
-
-### 消息类型
-
-**客户端发送:**
-```json
-{ "action": "start-test" }
-```
-
-**服务器响应:**
-```json
-// 日志消息
-{ "type": "log", "message": "...", "level": "info|success|error|warning" }
-
-// 截图消息
-{ "type": "screenshot", "message": "...", "path": "/path/to/screenshot.png" }
-
-// 成功消息
-{ "type": "success", "message": "测试通过" }
-
-// 错误消息
-{ "type": "error", "message": "错误详情" }
-```
-
-## 配置
-
-### 环境变量
-
-复制 `.env.example` 为 `.env` 并配置：
+如果 `browserOpen` 是 `false`，执行：
 
 ```bash
-cp .env.example .env
+curl -X POST http://localhost:3001/api/csdn/session/open
 ```
 
-默认配置：
-- 前端: http://localhost:3000
-- 后端: http://localhost:3001
-- WebSocket: ws://localhost:3001
+### 2. 登录后下次还要重新登录吗
 
-## 开发命令
+正常情况下不用。登录态会保存在 `data/profile/`。
+
+### 3. 为什么发布失败
+
+常见原因：
+
+- CSDN 页面结构变了
+- 当前账号未完成登录
+- 标签或专栏弹层没有按预期加载
+- 网络抖动导致页面没完全就绪
+
+优先去看：
+
+- `GET /api/csdn/session` 返回的 `lastError`
+- `data/screenshots/` 里的失败截图
+
+### 4. Markdown 内容会不会被当成富文本粘贴
+
+不会。当前流程直接走 CSDN 的 Markdown 编辑器页面。
+
+## 停止服务
 
 ```bash
-# 安装依赖
-npm install
-
-# 开发模式运行所有应用
-npm run dev
-
-# 构建所有应用
-npm run build
-
-# 运行测试
-npm run test
-
-# 代码检查
-npm run lint
+docker compose down
 ```
 
-## 后续优化
+如果想连同登录态和截图一起清掉：
 
-- [ ] 支持多个测试用例
-- [ ] 测试结果持久化存储
-- [ ] 用户认证系统
-- [ ] 测试历史记录
-- [ ] 性能优化指标
-- [ ] Docker 容器化部署
-- [ ] 国际化支持
+```bash
+rm -rf data/profile data/screenshots
+```
 
-## 许可证
+## 已知限制
 
-ISC
+- 当前方案是网页自动化，不是官方 API
+- CSDN 改版后可能需要更新选择器
+- 当前重点覆盖 CSDN Markdown 发文主流程
+- 分类专栏目前按“单个专栏”控制，不做多选接口
 
-## 贡献
+## 接口文档
 
-欢迎提交 Issues 和 Pull Requests！
+- `docs/API.md`

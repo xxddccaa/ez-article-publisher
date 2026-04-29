@@ -1,0 +1,28 @@
+services:
+  csdn-publisher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: csdn-publisher
+    ports:
+      - "3001:3001"
+      - "6080:6080"
+    environment:
+      PORT: 3001
+      DISPLAY: :99
+      AUTO_OPEN_BROWSER: "true"
+      BROWSER_STATE_DIR: /data/profile
+      SCREENSHOTS_DIR: /data/screenshots
+      http_proxy: ""
+      https_proxy: ""
+      HTTP_PROXY: ""
+      HTTPS_PROXY: ""
+      ALL_PROXY: ""
+      all_proxy: ""
+      NO_PROXY: ""
+      no_proxy: ""
+    volumes:
+      - ./data/profile:/data/profile
+      - ./data/screenshots:/data/screenshots
+    shm_size: "1gb"
+    restart: unless-stopped
