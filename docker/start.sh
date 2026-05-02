@@ -5,6 +5,7 @@ unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY all_proxy NO_PROXY
 
 mkdir -p /tmp/.X11-unix /data/profile /data/screenshots
 rm -f /data/profile/SingletonLock /data/profile/SingletonSocket /data/profile/SingletonCookie /data/profile/.org.chromium.*
+rm -f "/tmp/.X${DISPLAY#:}-lock" "/tmp/.X11-unix/X${DISPLAY#:}"
 
 echo "[startup] starting Xvfb on ${DISPLAY}"
 Xvfb "${DISPLAY}" -screen 0 1440x960x24 >/tmp/xvfb.log 2>&1 &
